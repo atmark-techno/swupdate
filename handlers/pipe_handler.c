@@ -12,6 +12,7 @@
 #include "swupdate.h"
 #include "handler.h"
 #include "util.h"
+#include "pctl.h"
 
 struct pipe_priv {
 	pid_t pid;
@@ -214,6 +215,14 @@ static int pipe_image(struct img_type *img,
 		TRACE("%s", priv.stdout_buf);
 	if (priv.stderr_index)
 		ERROR("%s", priv.stderr_buf);
+
+	/* run fail command if errored and set */
+	if (ret) {
+		cmd = dict_get_value(&img->properties, "fail-cmd");
+		if (cmd) {
+			run_system_cmd(cmd);
+		}
+	}
 
 	TRACE("finished piping image");
 	return ret;

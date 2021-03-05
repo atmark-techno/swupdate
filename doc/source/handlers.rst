@@ -868,6 +868,10 @@ is piped to the command which runs until the end, so if the checksum fails
 the harm has still been done and it is not recommended to modify data in place
 that way.
 
+If the "fail-cmd" property has been set, that command will be run if any error
+has been encountered (checksum error, error downloading or writing the file,
+or command returning a non-zero status code)
+
 
 ::
 
