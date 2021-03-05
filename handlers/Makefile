@@ -24,3 +24,4 @@ obj-$(CONFIG_SSBLSWITCH) += ssbl_handler.o
 obj-$(CONFIG_SWUFORWARDER_HANDLER) += swuforward_handler.o swuforward-ws.o
 obj-$(CONFIG_UBIVOL)	+= ubivol_handler.o
 obj-$(CONFIG_UCFWHANDLER)	+= ucfw_handler.o
+obj-$(CONFIG_PIPEHANDLER)	+= pipe_handler.o

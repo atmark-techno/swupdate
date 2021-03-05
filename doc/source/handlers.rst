@@ -857,3 +857,28 @@ found on the device. It is a partition handler and it runs before any image is i
                                    "18e12df1-d8e1-4283-8727-37727eb4261d"];
 		}
 	});
+
+Pipe Handler
+------------
+
+This handler spawns an arbitrary command and feed the file or image data to it.
+
+Note that if installed-directly is passed, the checksum is validated as data
+is piped to the command which runs until the end, so if the checksum fails
+the harm has still been done and it is not recommended to modify data in place
+that way.
+
+
+::
+
+	images: (
+		{
+			type = "pipe";
+			filename = "container_image.tar";
+			sha256 = "c63cc116ed10eb03153d0a76cb59555d524fe89484bc3b9d81267014f8170e8e";
+			installed-directly = true;
+			properties: {
+				cmd: "podman load";
+			}
+		}
+	);

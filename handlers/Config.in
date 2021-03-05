@@ -275,6 +275,13 @@ config UCFWHANDLER
 	  Simple protocol to upgrade a microcontroller
 	  via UART.
 
+config PIPEHANDLER
+	bool "pipe handler"
+	default n
+	help
+	  This handler forks an arbitrary command and pipes the
+	  cpio file to it.
+
 comment "Microcontroller handler depends on libgpiod"
 	depends on !HAVE_LIBGPIOD
 
