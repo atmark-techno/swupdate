@@ -842,3 +842,54 @@ size_t snescape(char *dst, size_t n, const char *src)
 
 	return len;
 }
+
+int read_lines_notify(int fd, char *buf, int buf_size, int *buf_offset,
+		      LOGLEVEL level)
+{
+	int n;
+	int offset = *buf_offset;
+	int print_last = 0;
+
+	n = read(fd, &buf[offset], buf_size - offset - 1);
+	if (n <= 0)
+		return -errno;
+
+	n += offset;
+	buf[n] = '\0';
+
+	/*
+	 * Check if last line was finished, or if we should copy
+	 * it back for next call.
+	 * If the buffer is full and there is only one line it
+	 * will be printed anyway
+	 */
+	if (buf[n-1] == '\n') {
+		print_last = 1;
+	}
+
+	char **lines = string_split(buf, '\n');
+	int nlines = count_string_array((const char **)lines);
+	if (n >= buf_size - 1 && nlines == 1)
+		print_last = 1;
+
+	/* copy leftover data for next call */
+	if (!print_last) {
+		int left = snprintf(buf, buf_size, "%s", lines[nlines-1]);
+		memset(&buf[left], 0, SWUPDATE_GENERAL_STRING_SIZE - left);
+		*buf_offset = left;
+		nlines--;
+		n -= left;
+	} else { /* no need to copy, reuse all buffer */
+		memset(buf, 0, n);
+		*buf_offset = 0;
+	}
+
+	for (unsigned int index = 0; index < nlines; index++) {
+		RECOVERY_STATUS status = level == ERRORLEVEL ? FAILURE : RUN;
+		swupdate_notify(status, "%s", level, lines[index]);
+	}
+
+	free_string_array(lines);
+
+	return n;
+}
