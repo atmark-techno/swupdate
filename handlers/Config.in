@@ -324,4 +324,12 @@ config UNIQUEUUID
 comment "uniqueuuid support needs libblkid"
 	depends on !HAVE_LIBBLKID
 
+config EXECHANDLER
+	bool "Exec handler"
+	default n
+	depends on RAW
+	help
+	  This handler writes file to temp space and execute an arbitrary
+	  command with it.
+
 endmenu
