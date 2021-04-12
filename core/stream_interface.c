@@ -499,6 +499,7 @@ void *network_initializer(void *data)
 	struct swupdate_cfg *software = data;
 	struct swupdate_request *req;
 	struct swupdate_parms parms;
+	bool first = true;
 
 	/* No installation in progress */
 	memset(&inst, 0, sizeof(inst));
@@ -513,6 +514,11 @@ void *network_initializer(void *data)
 	while (1) {
 		ret = 0;
 		TRACE("Main loop Daemon");
+
+		if (first) {
+			first = false;
+			thread_ready();
+		}
 
 		/* wait for someone to issue an install request */
 		pthread_mutex_lock(&stream_mutex);
