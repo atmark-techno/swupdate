@@ -848,13 +848,6 @@ int main(int argc, char **argv)
 	/* Read sw-versions */
 	get_sw_versions(&handle, &swcfg);
 
-	/*
-	 *  Start daemon if just a check is required
-	 *  SWUpdate will exit after the check
-	 */
-	network_daemon = start_thread(network_initializer, &swcfg);
-
-	start_thread(progress_bar_thread, NULL);
 
 	/* Start embedded web server */
 #if defined(CONFIG_MONGOOSE)
@@ -918,6 +911,14 @@ int main(int argc, char **argv)
 		result = install_from_file(fname, opt_c);
 		cleanup_files(&swcfg);
 	}
+
+	/*
+	 *  Start daemon if just a check is required
+	 *  SWUpdate will exit after the check
+	 */
+	network_daemon = start_thread(network_initializer, &swcfg);
+
+	start_thread(progress_bar_thread, NULL);
 
 #ifdef CONFIG_SYSTEMD
 	if (sd_booted()) {
