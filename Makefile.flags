@@ -89,7 +89,7 @@ endif
 # Usage: $(eval $(call pkg_check_modules,VARIABLE-PREFIX,MODULES))
 define pkg_check_modules
 $(1)_CFLAGS := $(shell $(PKG_CONFIG) $(PKG_CONFIG_FLAGS) --cflags $(2))
-$(1)_LIBS := $(shell $(PKG_CONFIG) $(PKG_CONFIG_FLAGS) --libs $(2))
+$(1)_LDFLAGS := $(shell $(PKG_CONFIG) $(PKG_CONFIG_FLAGS) --libs-only-L $(2))
 $(1)_LDLIBS := $(patsubst -l%,%,$(shell $(PKG_CONFIG) $(PKG_CONFIG_FLAGS) --libs-only-l $(2)))
 endef
 
@@ -112,7 +112,7 @@ ifneq ($(CONFIG_LUA),)
 LDFLAGS_swupdate += -Wl,-E
 $(eval $(call pkg_check_modules, LUABUILD, ${CONFIG_LUAPKG}))
 KBUILD_CFLAGS += $(LUABUILD_CFLAGS)
-KBUILD_LIBS += $(LUABUILD_LIBS)
+EXTRA_LDFLAGS += $(LUABUILD_LDFLAGS)
 LDLIBS += $(LUABUILD_LDLIBS)
 LUAVER :=  $(shell $(PKG_CONFIG) $(PKG_CONFIG_FLAGS) --modversion ${CONFIG_LUAPKG} | cut -d'.' -f1,2)
 endif
