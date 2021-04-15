@@ -494,7 +494,7 @@ acceptance-tests: swupdate ${tools-bins} FORCE
 
 PHONY += test
 test:
-	$(Q)$(MAKE) $(build)=test SWOBJS="$(swupdate-objs)" SWLIBS="$(swupdate-libs) ${swupdate-ipc-lib}" LDLIBS="$(LDLIBS)" tests
+	$(Q)$(MAKE) $(build)=test SWOBJS="$(swupdate-objs)" SWLIBS="$(swupdate-libs) ${swupdate-ipc-lib}" EXTRA_LDFLAGS="$(EXTRA_LDFLAGS)" LDLIBS="$(LDLIBS)" tests
 
 # The actual objects are generated when descending,
 # make sure no implicit rule kicks in
