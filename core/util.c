@@ -104,7 +104,7 @@ const char* get_tmpdir(void)
 
 	char *env_tmpdir = getenv("TMPDIR");
 	if (env_tmpdir == NULL) {
-		TMPDIR = (char*)"/tmp/";
+		TMPDIR = (char*)"/var/tmp/";
 		return TMPDIR;
 	}
 
@@ -114,7 +114,7 @@ const char* get_tmpdir(void)
 	}
 
 	if (asprintf(&TMPDIR, "%s/", env_tmpdir) == -1) {
-		TMPDIR = (char*)"/tmp/";
+		TMPDIR = (char*)"/var/tmp/";
 	}
 	return TMPDIR;
 }
@@ -126,7 +126,7 @@ const char* get_tmpdirscripts(void)
 	}
 
 	if (asprintf(&TMPDIRSCRIPT, "%s%s", get_tmpdir(), SCRIPTS_DIR_SUFFIX) == -1) {
-		TMPDIRSCRIPT = (char*)"/tmp/" SCRIPTS_DIR_SUFFIX;
+		TMPDIRSCRIPT = (char*)"/var/tmp/" SCRIPTS_DIR_SUFFIX;
 	}
 	return TMPDIRSCRIPT;
 }
