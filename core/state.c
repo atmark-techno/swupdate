@@ -81,7 +81,7 @@ static update_state_t do_get_state(void) {
 	update_state_t state = read_state((char *)STATE_KEY);
 
 	if (state == STATE_NOT_AVAILABLE) {
-		ERROR("Cannot read stored update state.");
+		DEBUG("Cannot read stored update state.");
 		return STATE_NOT_AVAILABLE;
 	}
 
