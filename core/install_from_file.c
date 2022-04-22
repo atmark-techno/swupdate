@@ -88,6 +88,8 @@ int install_from_file(const char *filename, bool check)
 	if (check)
 		req.dry_run = RUN_DRYRUN;
 
+	pthread_mutex_init(&mymutex, NULL);
+	pthread_mutex_lock(&mymutex);
 	while (timeout_cnt > 0) {
 		rc = swupdate_async_start(readimage, NULL,
 					  endupdate, &req, sizeof(req));
@@ -104,10 +106,8 @@ int install_from_file(const char *filename, bool check)
 		return EXIT_FAILURE;
 	}
 
-	pthread_mutex_init(&mymutex, NULL);
 
 	/* Now block */
-	pthread_mutex_lock(&mymutex);
 	pthread_cond_wait(&cv_end, &mymutex);
 	pthread_mutex_unlock(&mymutex);
 
