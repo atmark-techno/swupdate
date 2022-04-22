@@ -10,6 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/select.h>
 #include <pthread.h>
 #include <inttypes.h>
 #include "network_ipc.h"
@@ -42,39 +43,85 @@ static void *swupdate_async_thread(void *data)
 	sigset_t saved_mask;
 	struct timespec zerotime = {0, 0};
 	struct async_lib *rq = (struct async_lib *)data;
-	int swupdate_result;
+	int notify_fd, ret, maxfd;
+	fd_set rfds, wfds;
+	ipc_message msg;
+	msg.data.notify.status = RUN;
 
 	sigemptyset(&sigpipe_mask);
 	sigaddset(&sigpipe_mask, SIGPIPE);
 
 	if (pthread_sigmask(SIG_BLOCK, &sigpipe_mask, &saved_mask) == -1) {
 		perror("pthread_sigmask");
-		swupdate_result = FAILURE;
+		msg.data.notify.status = FAILURE;
 		goto out;
 	}
-	/* Start writing the image until end */
 
+	notify_fd = ipc_notify_connect();
+	if (notify_fd < 0) {
+		perror("could not setup notify fd");
+		msg.data.status.last_result = FAILURE;
+		goto out;
+	}
+
+	FD_ZERO(&rfds);
+	FD_ZERO(&wfds);
+	maxfd = (notify_fd > rq->connfd ? notify_fd : rq->connfd) + 1;
+
+	/* Start writing the image until end */
 	do {
 		if (!rq->wr)
 			break;
 
-		rq->wr(&pbuf, &size);
-		if (size) {
-			if (swupdate_image_write(pbuf, size) != size) {
-				perror("swupdate_image_write failed");
-				swupdate_result = FAILURE;
+		FD_SET(notify_fd, &rfds);
+		FD_SET(rq->connfd, &wfds);
+		ret = select(maxfd, &rfds, &wfds, NULL, NULL);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			perror("select");
+			msg.data.status.last_result = FAILURE;
+			goto out;
+		}
+
+		if (FD_ISSET(rq->connfd, &wfds)) {
+			rq->wr(&pbuf, &size);
+			if (size) {
+				if (swupdate_image_write(pbuf, size) != size) {
+					perror("swupdate_image_write failed");
+					msg.data.status.last_result = FAILURE;
+					goto out;
+				}
+			}
+		}
+
+		/* handle any notification coming */
+		while ((ret = ipc_notify_receive(&notify_fd, &msg, 0))
+				!= -ETIMEDOUT) {
+			if (ret < 0) {
+				perror("ipc_notify receive failed");
+				msg.data.status.last_result = FAILURE;
 				goto out;
 			}
+			if (rq->get)
+				rq->get(&msg);
 		}
 	} while(size > 0);
 
 	ipc_end(rq->connfd);
 
-	/*
-	 * Everything sent, ask for status
-	 */
-
-	swupdate_result = ipc_wait_for_complete(rq->get);
+	/* Everything sent, wait until we are IDLE again */
+	while (msg.data.notify.status != IDLE) {
+		ret = ipc_notify_receive(&notify_fd, &msg, -1);
+		if (ret < 0) {
+			perror("ipc_notify receive failed");
+			msg.data.status.last_result = FAILURE;
+			goto out;
+		}
+		if (rq->get)
+			rq->get(&msg);
+	}
+	ipc_end(notify_fd);
 
 	if (sigtimedwait(&sigpipe_mask, 0, &zerotime) == -1) {
 		// currently ignored
@@ -82,16 +129,25 @@ static void *swupdate_async_thread(void *data)
 
 	if (pthread_sigmask(SIG_SETMASK, &saved_mask, 0) == -1) {
 		perror("pthread_sigmask");
-		swupdate_result = FAILURE;
+		msg.data.notify.status = FAILURE;
 		goto out;
 	}
 
 out:
 	running = ASYNC_THREAD_DONE;
-	if (rq->end)
-		rq->end((RECOVERY_STATUS)swupdate_result);
+	if (rq->end) {
+		/* Get status to get update return code */
+		ret = ipc_get_status(&msg);
+		if (ret < 0) {
+			perror("ipc_get_status failed");
+			msg.data.status.last_result = FAILURE;
+			goto out;
+		}
 
-	pthread_exit((void*)(intptr_t)(swupdate_result == SUCCESS));
+		rq->end(msg.data.status.last_result);
+	}
+
+	pthread_exit((void*)(intptr_t)(msg.data.notify.status == SUCCESS));
 }
 
 /*
