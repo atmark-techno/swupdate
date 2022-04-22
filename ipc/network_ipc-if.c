@@ -49,7 +49,7 @@ static void *swupdate_async_thread(void *data)
 
 	if (pthread_sigmask(SIG_BLOCK, &sigpipe_mask, &saved_mask) == -1) {
 		perror("pthread_sigmask");
-		msg.data.status.last_result = FAILURE;
+		swupdate_result = FAILURE;
 		goto out;
 	}
 	/* Start writing the image until end */
@@ -62,7 +62,7 @@ static void *swupdate_async_thread(void *data)
 		if (size) {
 			if (swupdate_image_write(pbuf, size) != size) {
 				perror("swupdate_image_write failed");
-				msg.data.status.last_result = FAILURE;
+				swupdate_result = FAILURE;
 				goto out;
 			}
 		}
@@ -82,7 +82,7 @@ static void *swupdate_async_thread(void *data)
 
 	if (pthread_sigmask(SIG_SETMASK, &saved_mask, 0) == -1) {
 		perror("pthread_sigmask");
-		msg.data.status.last_result = FAILURE;
+		swupdate_result = FAILURE;
 		goto out;
 	}
 
@@ -91,7 +91,7 @@ out:
 	if (rq->end)
 		rq->end((RECOVERY_STATUS)swupdate_result);
 
-	pthread_exit((void*)(intptr_t)(msg.data.status.last_result == SUCCESS));
+	pthread_exit((void*)(intptr_t)(swupdate_result == SUCCESS));
 }
 
 /*
