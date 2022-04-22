@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <pthread.h>
+#include <inttypes.h>
 #include "network_ipc.h"
 
 static pthread_t async_thread_id;
@@ -44,7 +45,8 @@ static void *swupdate_async_thread(void *data)
 
 	if (pthread_sigmask(SIG_BLOCK, &sigpipe_mask, &saved_mask) == -1) {
 		perror("pthread_sigmask");
-		pthread_exit((void *)-1);
+		msg.data.status.last_result = FAILURE;
+		goto out;
 	}
 	/* Start writing the image until end */
 
@@ -56,7 +58,8 @@ static void *swupdate_async_thread(void *data)
 		if (size) {
 			if (swupdate_image_write(pbuf, size) != size) {
 				perror("swupdate_image_write failed");
-				pthread_exit((void *)-1);
+				msg.data.status.last_result = FAILURE;
+				goto out;
 			}
 		}
 	} while(size > 0);
@@ -69,20 +72,22 @@ static void *swupdate_async_thread(void *data)
 
 	swupdate_result = ipc_wait_for_complete(rq->get);
 
-	handle = 0;
-
 	if (sigtimedwait(&sigpipe_mask, 0, &zerotime) == -1) {
 		// currently ignored
 	}
 
 	if (pthread_sigmask(SIG_SETMASK, &saved_mask, 0) == -1) {
-		  perror("pthread_sigmask");
+		perror("pthread_sigmask");
+		msg.data.status.last_result = FAILURE;
+		goto out;
 	}
 
+out:
+	handle = 0;
 	if (rq->end)
 		rq->end((RECOVERY_STATUS)swupdate_result);
 
-	pthread_exit(NULL);
+	pthread_exit((void*)(intptr_t)(msg.data.status.last_result == SUCCESS));
 }
 
 /*
