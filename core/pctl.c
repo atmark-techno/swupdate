@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 #include <sys/select.h>
 #include <stdlib.h>
 #if defined(__linux__)
@@ -148,6 +149,7 @@ static int spawn_process(struct swupdate_task *task,
 	if (process_id) {
 		/* Parent close the [1] */
 		close(sockfd[1]);
+		fcntl(sockfd[0], F_SETFD, FD_CLOEXEC);
 		task->pid = process_id;
 		task->pipe = sockfd[0];
 		return 0;
@@ -155,6 +157,7 @@ static int spawn_process(struct swupdate_task *task,
 
 	/* Child closes [0] */
 	close(sockfd[0]);
+	fcntl(sockfd[1], F_SETFD, FD_CLOEXEC);
 
 	sw_sockfd = sockfd[1];
 
