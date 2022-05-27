@@ -11,6 +11,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -46,6 +47,8 @@ static int prepare_ipc(void) {
 	connfd = socket(AF_LOCAL, SOCK_STREAM, 0);
 	if (connfd < 0)
 		return -1;
+
+	fcntl(connfd, F_SETFD, FD_CLOEXEC);
 
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sun_family = AF_LOCAL;
