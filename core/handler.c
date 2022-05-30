@@ -105,9 +105,9 @@ void print_registered_handlers(void)
 	if (!nr_installers)
 		return;
 
-	INFO("Registered handlers:");
+	TRACE("Registered handlers:");
 	for (i = 0; i < nr_installers; i++) {
-		INFO("\t%s", supported_types[i].desc);
+		TRACE("\t%s", supported_types[i].desc);
 	}
 }
 
