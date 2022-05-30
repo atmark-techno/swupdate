@@ -1303,11 +1303,11 @@ int lua_handlers_init(void)
 		ret = luaL_dostring(gL, "require (\"swupdate_handlers\")");
 #endif
 		if (ret != 0) {
-			INFO("%s Lua handler(s) not found.", location);
+			TRACE("%s Lua handler(s) not found.", location);
 			lua_report_exception(gL);
 			lua_pop(gL, 1);
 		} else {
-			INFO("%s Lua handler(s) found and loaded.", location);
+			TRACE("%s Lua handler(s) found and loaded.", location);
 		}
 	} else	{
 		WARN("Unable to register Lua context for callbacks");
