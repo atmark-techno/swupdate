@@ -1529,11 +1529,11 @@ static int lua_handlers_init(lua_State *L, struct dict *bootenv)
 		ret = luaL_dostring(L, "require (\"swupdate_handlers\")");
 #endif
 		if (ret != 0) {
-			INFO("%s Lua handler(s) not found.", location);
+			TRACE("%s Lua handler(s) not found.", location);
 			lua_report_exception(L);
 			lua_pop(L, 1);
 		} else {
-			INFO("%s Lua handler(s) found and loaded.", location);
+			TRACE("%s Lua handler(s) found and loaded.", location);
 		}
 	} else	{
 		WARN("Unable to register Lua context for callbacks");
