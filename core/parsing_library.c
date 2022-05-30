@@ -209,7 +209,7 @@ void get_hash_value(parsertype p, void *elem, unsigned char *hash)
 	ascii_to_hash(hash, hash_ascii);
 }
 
-bool set_find_path(const char **nodes, const char *newpath, char **tmp)
+bool set_find_path(const char **nodes, const char *newpath, char ***tmp)
 {
 	char **paths;
 	unsigned int count;
@@ -217,7 +217,6 @@ bool set_find_path(const char **nodes, const char *newpath, char **tmp)
 	char *token, *ref;
 	bool first = true;
 	int allocstr = 0;
-	(void)tmp;
 
 	/*
 	 * Include of files is not supported,
@@ -300,7 +299,7 @@ bool set_find_path(const char **nodes, const char *newpath, char **tmp)
 	}
 
 	free(ref);
-	tmp = paths;
+	*tmp = paths;
 
 	return true;
 }
