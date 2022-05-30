@@ -549,19 +549,19 @@ static int read_type_settings(void *settings, void *data)
 static void print_registered_updatetypes(struct swupdate_cfg *sw)
 {
 	struct swupdate_type_cfg *update_type;
-	INFO("Registered : Update Types");
+	TRACE("Registered : Update Types");
 	LIST_FOREACH(update_type, &sw->swupdate_types, next) {
-		INFO("\tName:\t%s", update_type->type_name);
+		TRACE("\tName:\t%s", update_type->type_name);
 		if (strlen(update_type->preupdatecmd))
-			INFO("\t\tpreupdatecmd:\t%s", update_type->preupdatecmd);
+			TRACE("\t\tpreupdatecmd:\t%s", update_type->preupdatecmd);
 		if (strlen(update_type->postupdatecmd))
-			INFO("\t\tpostupdatecmd:\t%s", update_type->postupdatecmd);
+			TRACE("\t\tpostupdatecmd:\t%s", update_type->postupdatecmd);
 		if (strlen(update_type->minimum_version))
-			INFO("\t\tMin Version:\t%s", update_type->minimum_version);
+			TRACE("\t\tMin Version:\t%s", update_type->minimum_version);
 		if (strlen(update_type->maximum_version))
-			INFO("\t\tMax Version:\t%s", update_type->maximum_version);
+			TRACE("\t\tMax Version:\t%s", update_type->maximum_version);
 		if (strlen(update_type->current_version))
-			INFO("\t\tNo-Downgrading:\t%s", update_type->current_version);
+			TRACE("\t\tNo-Downgrading:\t%s", update_type->current_version);
 	}
 }
 
@@ -1035,9 +1035,9 @@ int main(int argc, char **argv)
 			INFO("Or chose another bootloader interface by supplying -B <loader>.");
 			exit(EXIT_FAILURE);
 		}
-		INFO("Using default bootloader interface: " PREPROCVALUE(BOOTLOADER_DEFAULT));
+		TRACE("Using default bootloader interface: " PREPROCVALUE(BOOTLOADER_DEFAULT));
 	} else {
-		INFO("Using bootloader interface: %s", get_bootloader());
+		TRACE("Using bootloader interface: %s", get_bootloader());
 	}
 
 	print_registered_updatetypes(&swcfg);

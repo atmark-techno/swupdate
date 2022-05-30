@@ -124,17 +124,17 @@ const char* get_dgstlib(void)
 
 void print_registered_cryptolib(void)
 {
-	INFO("Registered Crypto Providers:");
+	TRACE("Registered Crypto Providers:");
 
 	for (int type = 0; type < NUMLIBS; type++) {
 		int num = num_available[type];
 		entry *elem = available[type];
 		entry *cur = current[type];
 		if (num > 0) {
-			INFO("\tProvider for %s", libdesc[type]);
+			TRACE("\tProvider for %s", libdesc[type]);
 		}
 		for (unsigned int i = 0; i < num; i++) {
-			INFO("\t\t%s%s", elem[i].name, cur == &elem[i] ? "*" : "");
+			TRACE("\t\t%s%s", elem[i].name, cur == &elem[i] ? "*" : "");
 		}
 	}
 }
