@@ -788,9 +788,9 @@ int main(int argc, char **argv)
 			INFO("Or chose another bootloader interface by supplying -B <loader>.");
 			exit(EXIT_FAILURE);
 		}
-		INFO("Using default bootloader interface: " PREPROCVALUE(BOOTLOADER_DEFAULT));
+		TRACE("Using default bootloader interface: " PREPROCVALUE(BOOTLOADER_DEFAULT));
 	} else {
-		INFO("Using bootloader interface: %s", get_bootloader());
+		TRACE("Using bootloader interface: %s", get_bootloader());
 	}
 
 	/*
