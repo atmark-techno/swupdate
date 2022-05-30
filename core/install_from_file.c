@@ -51,7 +51,8 @@ static int endupdate(RECOVERY_STATUS status)
 {
 	end_status = (status == SUCCESS) ? EXIT_SUCCESS : EXIT_FAILURE;
 
-	INFO("SWUpdate %s\n",
+	/* note this is also printed in network initializer thread */
+	TRACE("SWUpdate %s\n",
 		status == FAILURE ? "*failed* !" :
 			"was successful !");
 
