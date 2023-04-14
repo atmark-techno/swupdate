@@ -221,6 +221,7 @@ int run_prepost_scripts(struct imglist *list, script_fn type)
 	int ret;
 	struct img_type *img;
 	struct installer_handler *hnd;
+	char *description;
 
 	/* Scripts must be run before installing images */
 	LIST_FOREACH(img, list, next) {
@@ -232,6 +233,11 @@ int run_prepost_scripts(struct imglist *list, script_fn type)
 				.scriptfn = type,
 				.data = hnd->data
 			};
+
+			description = dict_get_value(&img->properties, "description");
+			if (description) {
+				INFO("Installing %s", description);
+			}
 
 			swupdate_progress_inc_step(img->fname, hnd->desc);
 			swupdate_progress_update(0);
@@ -249,6 +255,7 @@ int run_prepost_scripts(struct imglist *list, script_fn type)
 int install_single_image(struct img_type *img, bool dry_run)
 {
 	struct installer_handler *hnd;
+	char *description;
 	int ret;
 
 	/*
@@ -264,6 +271,10 @@ int install_single_image(struct img_type *img, bool dry_run)
 		return -1;
 	}
 	TRACE("Found installer for stream %s %s", img->fname, hnd->desc);
+	description = dict_get_value(&img->properties, "description");
+	if (description) {
+		INFO("Installing %s", description);
+	}
 
 	swupdate_progress_inc_step(img->fname, hnd->desc);
 
