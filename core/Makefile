@@ -30,4 +30,5 @@ obj-y += swupdate.o \
 	 swupdate_dict.o \
 	 swupdate_vars.o \
 	 semver.o \
-	 strlcpy.o
+	 strlcpy.o \
+	 mkswu.o
