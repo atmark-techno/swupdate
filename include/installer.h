@@ -24,4 +24,9 @@ int postupdate(struct swupdate_cfg *swcfg, const char *info);
 int preupdatecmd(struct swupdate_cfg *swcfg);
 void cleanup_files(struct swupdate_cfg *software);
 
+int mkswu_hook_pre(struct swupdate_cfg *software, const char *swdescription);
+int mkswu_hook_post(bool dry_run);
+void mkswu_hook_cleanup(bool dry_run);
+
+
 #endif

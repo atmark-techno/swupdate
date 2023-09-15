@@ -28,4 +28,5 @@ obj-y += swupdate.o \
 	 artifacts_versions.o \
 	 swupdate_dict.o \
 	 semver.o \
-	 strlcpy.o
+	 strlcpy.o \
+	 mkswu.o

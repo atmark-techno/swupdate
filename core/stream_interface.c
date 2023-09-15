@@ -191,6 +191,9 @@ static int extract_files(int fd, struct swupdate_cfg *software)
 			if (preupdatecmd(software)) {
 				return -1;
 			}
+			if (mkswu_hook_pre(software, output_file)) {
+				return -1;
+			}
 			status = STREAM_DATA;
 			break;
 
@@ -675,6 +678,9 @@ void *network_initializer(void *data)
 					ERROR("Cannot persistently store INSTALLED update state.");
 					notify(FAILURE, RECOVERY_ERROR, ERRORLEVEL, "Installation failed !");
 					inst.last_install = FAILURE;
+				} else if (mkswu_hook_post(software->parms.dry_run)) {
+					notify(FAILURE, RECOVERY_ERROR, ERRORLEVEL, "Installation failed (post)!");
+					inst.last_install = FAILURE;
 				} else {
 					notify(SUCCESS, RECOVERY_NO_ERROR, INFOLEVEL, "SWUPDATE successful !");
 					inst.last_install = SUCCESS;
@@ -683,6 +689,10 @@ void *network_initializer(void *data)
 		} else {
 			inst.last_install = FAILURE;
 			notify(FAILURE, RECOVERY_ERROR, ERRORLEVEL, "Image invalid or corrupted. Not installing ...");
+		}
+
+		if (inst.last_install != SUCCESS) {
+			mkswu_hook_cleanup(software->parms.dry_run);
 		}
 
 		swupdate_progress_end(inst.last_install);
