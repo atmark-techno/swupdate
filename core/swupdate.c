@@ -836,6 +836,10 @@ int main(int argc, char **argv)
 		}
 	}
 
+	setenv("SWUPDATE_VERSION",
+		STR(VERSION)"."STR(VERSION_PATCHLEVEL)"."STR(VERSION_SUBLEVEL)"-"STR(VERSION_EXTRAVERSION),
+		1);
+
 	printf("%s\n\n", BANNER);
 	printf("Licensed under GPLv2. See source distribution for detailed "
 		"copyright notices.\n\n");
