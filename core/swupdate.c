@@ -834,6 +834,7 @@ int main(int argc, char **argv)
 		}
 	}
 
+	setenv("SWUPDATE_VERSION", SWU_VER, 1);
 	printf("%s\n", BANNER);
 	printf("Licensed under GPLv2. See source distribution for detailed "
 		"copyright notices.\n\n");
