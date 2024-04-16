@@ -589,6 +589,8 @@ void *network_initializer(void *data)
 		stream_wkup = false;
 		inst.status = RUN;
 		pthread_mutex_unlock(&stream_mutex);
+		if (mkswu_lock())
+			ret = -EIO;
 		notify(START, RECOVERY_NO_ERROR, INFOLEVEL, "Software Update started !");
 		TRACE("Software update started");
 
@@ -629,7 +631,7 @@ void *network_initializer(void *data)
 		/*
 		 * Check if the stream should be saved
 		 */
-		if (!req->disable_store_swu  && strlen(software->output)) {
+		if (!ret && !req->disable_store_swu  && strlen(software->output)) {
 			ret = save_stream(inst.fd, software);
 			if (ret < 0) {
 				notify(FAILURE, RECOVERY_ERROR, ERRORLEVEL,
@@ -776,6 +778,8 @@ void *network_initializer(void *data)
 		swupdate_remove_directory(SCRIPTS_DIR_SUFFIX);
 		swupdate_remove_directory(DATADST_DIR_SUFFIX);
 #endif
+
+		mkswu_unlock();
 
 		/*
 		 * Last step, if no restart is required,
