@@ -1,8 +1,12 @@
 // SPDX-License-Identifier:     GPL-2.0-only
 
-#include <unistd.h>
+#define _POSIX_C_SOURCE 200809L
+
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <sys/file.h>
+#include <unistd.h>
 
 #include "installer.h"
 #include "semver.h"
@@ -12,6 +16,11 @@ static bool running_vendored = false;
 #define VENDORED_SCRIPTS "/usr/libexec/mkswu/"
 #define SKIP_SCRIPTS_MARKER "# DEBUG_SKIP_SCRIPTS\n"
 static char *EMBEDDED_CLEANUP_SCRIPT;
+
+static const char *LOCK_FILE = "/var/lock/swupdate.lock";
+static const char *REBOOT_FILE = "/run/swupdate_rebooting";
+static int lock_fd = -2;
+
 
 static ssize_t get_vendored_scripts_version(char *version)
 {
@@ -122,4 +131,56 @@ void mkswu_hook_cleanup(bool dry_run)
 	if (dry_run)
 		return;
 	run_system_cmd(cleanup_script);
+}
+
+int mkswu_lock(void)
+{
+	// use a different path for regular user (this should only ever be used for tests)
+	if (lock_fd == -2 && geteuid() != 0) {
+		lock_fd = -1;
+		asprintf((char**)&LOCK_FILE, "/tmp/.mkswu_lock_%d", geteuid());
+	}
+
+	if (lock_fd < 0) {
+		lock_fd = open(LOCK_FILE, O_WRONLY|O_CREAT, 0644);
+		if (lock_fd < 0) {
+			ERROR("Could not open mkswu lock file %s: %m", LOCK_FILE);
+			return 1;
+		}
+	}
+	if (flock(lock_fd, LOCK_EX|LOCK_NB) < 0) {
+		if (errno != EAGAIN || errno != EWOULDBLOCK) {
+			ERROR("Could not take mkswu lock: %m");
+			return 1;
+		}
+		INFO("Waiting for mkswu lock...");
+		while (1) {
+			if (flock(lock_fd, LOCK_EX) >= 0)
+				break;
+			if (errno == EAGAIN)
+				continue;
+			ERROR("Could not take mkswu lock: %m");
+			return 1;
+		}
+	}
+	if (access(REBOOT_FILE, F_OK) == 0) {
+		INFO("Previous updated marked us for reboot, waiting forever...");
+		while (1) {
+			sleep(1000);
+		}
+	}
+	// write PID for debugging. This is only informational so we do
+	// not care about errors.
+	lseek(lock_fd, 0, SEEK_SET);
+	ftruncate(lock_fd, 0);
+	dprintf(lock_fd, "%d\n", getpid());
+	return 0;
+}
+
+void mkswu_unlock(void)
+{
+	if (lock_fd < 0)
+		return;
+	flock(lock_fd, LOCK_UN);
+	// keep lock_fd open for next run
 }
