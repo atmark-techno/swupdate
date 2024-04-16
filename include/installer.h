@@ -29,3 +29,5 @@ int update_installed_image_version(struct swver *sw_ver_list,
 int mkswu_hook_pre(struct swupdate_cfg *software, const char *swdescription);
 int mkswu_hook_post(bool dry_run);
 void mkswu_hook_cleanup(bool dry_run);
+int mkswu_lock(void);
+void mkswu_unlock(void);
