@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "installer.h"
@@ -135,23 +136,28 @@ void mkswu_hook_cleanup(bool dry_run)
 
 int mkswu_lock(void)
 {
+	struct stat statbuf_fd, statbuf_path;
+
 	// use a different path for regular user (this should only ever be used for tests)
 	if (lock_fd == -2 && geteuid() != 0) {
 		lock_fd = -1;
 		asprintf((char**)&LOCK_FILE, "/tmp/.mkswu_lock_%d", geteuid());
 	}
 
+	// this should never happen in practice
+	if (lock_fd >= 0)
+		goto sanity_checks;
+
+again:
+	lock_fd = open(LOCK_FILE, O_WRONLY|O_CREAT, 0644);
 	if (lock_fd < 0) {
-		lock_fd = open(LOCK_FILE, O_WRONLY|O_CREAT, 0644);
-		if (lock_fd < 0) {
-			ERROR("Could not open mkswu lock file %s: %m", LOCK_FILE);
-			return 1;
-		}
+		ERROR("Could not open mkswu lock file %s: %m", LOCK_FILE);
+		return 1;
 	}
 	if (flock(lock_fd, LOCK_EX|LOCK_NB) < 0) {
 		if (errno != EAGAIN || errno != EWOULDBLOCK) {
 			ERROR("Could not take mkswu lock: %m");
-			return 1;
+			goto out_close;
 		}
 		INFO("Waiting for mkswu lock...");
 		while (1) {
@@ -160,8 +166,19 @@ int mkswu_lock(void)
 			if (errno == EAGAIN)
 				continue;
 			ERROR("Could not take mkswu lock: %m");
-			return 1;
+			goto out_close;
 		}
+	}
+sanity_checks:
+	if (fstat(lock_fd, &statbuf_fd) < 0) {
+		// should never happen...
+		ERROR("Could not stat mkswu lock (fd): %m");
+		goto out_close;
+	}
+	if (lstat(LOCK_FILE, &statbuf_path) < 0 || statbuf_fd.st_ino != statbuf_path.st_ino) {
+		DEBUG("lock file changed, grabbing again");
+		close(lock_fd);
+		goto again;
 	}
 	if (access(REBOOT_FILE, F_OK) == 0) {
 		INFO("Previous updated marked us for reboot, waiting forever...");
@@ -175,12 +192,18 @@ int mkswu_lock(void)
 	ftruncate(lock_fd, 0);
 	dprintf(lock_fd, "%d\n", getpid());
 	return 0;
+
+out_close:
+	close(lock_fd);
+	lock_fd = -1;
+	return 1;
 }
 
 void mkswu_unlock(void)
 {
 	if (lock_fd < 0)
 		return;
-	flock(lock_fd, LOCK_UN);
-	// keep lock_fd open for next run
+	unlink(LOCK_FILE);
+	close(lock_fd);
+	lock_fd = -1;
 }
