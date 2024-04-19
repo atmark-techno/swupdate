@@ -28,7 +28,7 @@
  */
 #define DL_LOWSPEED_TIME	300
 
-#define DL_DEFAULT_RETRIES	3
+#define DL_DEFAULT_RETRIES	10
 
 static struct option long_options[] = {
     {"url", required_argument, NULL, 'u'},
