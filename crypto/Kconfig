@@ -141,3 +141,6 @@ config ENCRYPTED_IMAGES_HARDEN_LOGGING
 
 endmenu
 
+config CHUNKED_HASH
+	bool "Support for chuked checksums input"
+	default y
