@@ -615,12 +615,6 @@ int copyfile(struct swupdate_copy *args)
 	if (args->checksum)
 		*args->checksum = 0;
 
-	if (IsValidHash(args->hash)) {
-		input_state.dgst = swupdate_HASH_init(SHA_DEFAULT);
-		if (!input_state.dgst)
-			return -EFAULT;
-	}
-
 	if (args->encrypted) {
 		aes_key = get_aes_key();
 		if (args->imgivt && strlen(args->imgivt)) {
@@ -736,6 +730,9 @@ int copyfile(struct swupdate_copy *args)
 		close(tmpfd);
 		chunked_hash_state.chunked_hashes = args->chunked_hashes;
 
+		/* avoid computing sha256 twice */
+		args->hash = NULL;
+
 		chunked_hash_state.upstream_step = step;
 		chunked_hash_state.upstream_state = state;
 		step = &chunked_hash_step;
@@ -758,6 +755,12 @@ int copyfile(struct swupdate_copy *args)
 		state = &decompress_state;
 	}
 #endif
+
+	if (IsValidHash(args->hash)) {
+		input_state.dgst = swupdate_HASH_init(SHA_DEFAULT);
+		if (!input_state.dgst)
+			return -EFAULT;
+	}
 
 	for (;;) {
 		ret = step(state, buffer, sizeof buffer);
