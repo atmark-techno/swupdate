@@ -529,6 +529,7 @@ static void cleaup_img_entry(struct img_type *img)
 
 void free_image(struct img_type *img) {
 	dict_drop_db(&img->properties);
+	free(img->chunked_hashes);
 	free(img);
 }
 

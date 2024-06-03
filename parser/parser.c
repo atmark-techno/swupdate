@@ -422,6 +422,11 @@ static int parse_common_attributes(parsertype p, void *elem, struct img_type *im
 	GET_FIELD_STRING(p, elem, "data", image->type_data);
 	GET_FIELD_INT64(p, elem, "size", &image->size);
 	get_hash_value(p, elem, image->sha256);
+#ifdef CONFIG_CHUNKED_HASH
+	if (get_chunked_hashes(p, elem, &image->chunked_hashes)) {
+		return -1;
+	}
+#endif
 
 	/*
 	 * offset can be set as number or string. As string,

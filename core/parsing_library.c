@@ -239,6 +239,51 @@ void get_hash_value(parsertype p, void *elem, unsigned char *hash)
 	ascii_to_hash(hash, hash_ascii);
 }
 
+#ifdef CONFIG_CHUNKED_HASH
+int get_chunked_hashes(parsertype p, void *elem, unsigned char **chunked_hashes)
+{
+	void *hashes_node = get_child(p, elem, "chunked_sha256");
+
+	/* does not have chunked hashes */
+	if (!hashes_node)
+		return 0;
+
+	int count = get_array_length(p, hashes_node);
+	unsigned char *hashes = malloc((count+1) * SHA256_HASH_LENGTH);
+	if (!hashes) {
+		ERROR("No memory: failed for %d bytes", (count+1) * SHA256_HASH_LENGTH);
+		return -ENOMEM;
+	}
+
+	int idx;
+	for (idx = 0; idx < count; idx++) {
+		void *hash_node = get_elem_from_idx(p, hashes_node, idx);
+		if (!hash_node) {
+			ERROR("Could not get %dth hash in %d long array?", idx, count);
+			free(hashes);
+			return -EINVAL;
+		}
+		const char *hash_str = get_field_string(p, hash_node, NULL);
+		if (!hash_str) {
+			ERROR("%dth hash in chunked hashes array was not a string?", idx);
+			free(hashes);
+			return -EINVAL;
+		}
+		if (ascii_to_hash(hashes + idx * SHA256_HASH_LENGTH, hash_str) < 0) {
+			ERROR("Invalid hash %s", hash_str);
+			free(hashes);
+			return -EINVAL;
+		}
+	}
+
+	/* zero final hash marking end of array */
+	memset(hashes + count * SHA256_HASH_LENGTH, 0, SHA256_HASH_LENGTH);
+
+	*chunked_hashes = hashes;
+	return 0;
+}
+#endif
+
 bool set_find_path(const char **nodes, const char *newpath, char ***tmp)
 {
 	char **paths;

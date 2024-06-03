@@ -853,6 +853,7 @@ int copyimage(void *out, struct img_type *img, writeimage callback)
 		.compressed = img->compressed,
 		.checksum = &img->checksum,
 		.hash = img->sha256,
+		.chunked_hashes = img->chunked_hashes,
 		.encrypted = img->is_encrypted,
 		.imgivt = img->ivt_ascii,
 	};
