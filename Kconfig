@@ -522,6 +522,10 @@ config PKCS11
 	  key available in a file. This is implemented with wolfSSL independent
 	  from the SSL implementation and replaces the plain key method.
 
+config CHUNKED_HASH
+	bool "Support for chuked checksums input"
+	default y
+
 comment "Compressors (zlib always on)"
 
 config GUNZIP

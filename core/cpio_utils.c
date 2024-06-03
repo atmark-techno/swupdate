@@ -19,6 +19,7 @@
 #ifdef CONFIG_ZSTD
 #include <zstd.h>
 #endif
+#include <sys/mman.h>
 
 #include "generated/autoconf.h"
 #include "cpiohdr.h"
@@ -466,6 +467,79 @@ static int hash_compare(struct swupdate_digest *dgst, unsigned char *hash)
 	return 0;
 }
 
+#ifdef CONFIG_CHUNKED_HASH
+struct ChunkedHashState {
+	PipelineStep upstream_step;
+	void *upstream_state;
+
+	/* null-terminated array of checksums */
+	unsigned char *chunked_hashes;
+
+	/* mmaped buffer */
+	void *chunk_data;
+	size_t chunk_size;
+	size_t valid;
+
+	/* amount written */
+	size_t offset;
+};
+
+
+static int chunked_hash_step(void *_state, void *buffer, size_t size)
+{
+	struct ChunkedHashState *state = (struct ChunkedHashState *)_state;
+	int count = 0, n;
+
+	while (count < size) {
+		if (state->offset == state->valid) {
+			/* input_step does full reads */
+			if (state->valid && state->valid < state->chunk_size)
+				return count;
+
+			n = state->upstream_step(state->upstream_state, state->chunk_data, state->chunk_size);
+			if (n <= 0) {
+				return n;
+			}
+
+			if (!IsValidHash(state->chunked_hashes)) {
+				ERROR("No hash left for chunk -- file too large?");
+				return -EFAULT;
+			}
+
+			/*
+			 * possible improvement: in theory we can re-init a given buffer after final(),
+			 * but swupdate_HASH_* does not expose this API at this point.
+			 * Realloc every time.
+			 */
+			void *dgst = swupdate_HASH_init(SHA_DEFAULT);
+			if (!dgst)
+				return -EFAULT;
+
+			if (swupdate_HASH_update(dgst, state->chunk_data, n) < 0 ||
+			    hash_compare(dgst, state->chunked_hashes) < 0) {
+				swupdate_HASH_cleanup(dgst);
+				return -EFAULT;
+			}
+			swupdate_HASH_cleanup(dgst);
+
+			state->chunked_hashes += SHA256_HASH_LENGTH;
+			state->valid = n;
+			state->offset = 0;
+		}
+
+		n = state->valid - state->offset;
+		if (n > size)
+			n = size;
+		memcpy(buffer + count, state->chunk_data + state->offset, n);
+		count += n;
+		size -= n;
+		state->offset += n;
+	}
+
+	return count;
+}
+#endif
+
 int copyfile(struct swupdate_copy *args)
 {
 	unsigned int percent, prevpercent = 0;
@@ -491,6 +565,10 @@ int copyfile(struct swupdate_copy *args)
 		.dcrypt = NULL,
 		.outlen = 0, .eof = false
 	};
+
+#ifdef CONFIG_CHUNKED_HASH
+	struct ChunkedHashState chunked_hash_state = { 0 };
+#endif
 
 #if defined(CONFIG_GUNZIP) || defined(CONFIG_ZSTD)
 	struct DecompressState decompress_state = {
@@ -619,6 +697,52 @@ int copyfile(struct swupdate_copy *args)
 	step = &input_step;
 	state = &input_state;
 
+#ifdef CONFIG_CHUNKED_HASH
+	if (args->chunked_hashes) {
+		char tmpfilename[MAX_IMAGE_FNAME];
+		int tmpfd;
+
+		/* this requires a large-ish buffer for chunk size: use a temporary file mmaped */
+		/* XXX make configurable */
+		chunked_hash_state.chunk_size = 512*1024;
+		snprintf(tmpfilename, sizeof(tmpfilename), "%s/swtmp-datachunkXXXXXX", get_tmpdir());
+		tmpfd = mkstemp(tmpfilename);
+		if (tmpfd < 0) {
+			ERROR("Could not open temporary fd, error %d", errno);
+			ret = -EFAULT;
+			goto copyfile_exit;
+		}
+		unlink(tmpfilename);
+
+		if (ftruncate(tmpfd, chunked_hash_state.chunk_size) < 0) {
+			ERROR("Could not open temporary fd, error %d", errno);
+			ret = -EFAULT;
+			close(tmpfd);
+			goto copyfile_exit;
+		}
+
+		chunked_hash_state.chunk_data =
+			mmap(NULL, chunked_hash_state.chunk_size, PROT_READ|PROT_WRITE,
+			     MAP_SHARED, tmpfd, 0);
+
+		if (chunked_hash_state.chunk_data == MAP_FAILED) {
+			ERROR("Could not mmap temporary data, error %d", errno);
+			ret = -EFAULT;
+			close(tmpfd);
+			goto copyfile_exit;
+		}
+
+		/* close immediately, mmap stays valid until munmap */
+		close(tmpfd);
+		chunked_hash_state.chunked_hashes = args->chunked_hashes;
+
+		chunked_hash_state.upstream_step = step;
+		chunked_hash_state.upstream_state = state;
+		step = &chunked_hash_step;
+		state = &chunked_hash_state;
+	}
+#endif
+
 	if (args->encrypted) {
 		decrypt_state.upstream_step = step;
 		decrypt_state.upstream_state = state;
@@ -665,6 +789,12 @@ int copyfile(struct swupdate_copy *args)
 		}
 	}
 
+	if (chunked_hash_state.chunked_hashes && IsValidHash(chunked_hash_state.chunked_hashes)) {
+		ret = -EFAULT;
+		ERROR("Truncated input (leftover hashes)");
+		goto copyfile_exit;
+	}
+
 	if (IsValidHash(args->hash) && hash_compare(input_state.dgst, args->hash) < 0) {
 		ret = -EFAULT;
 		goto copyfile_exit;
@@ -687,6 +817,12 @@ copyfile_exit:
 	if (decrypt_state.dcrypt) {
 		swupdate_DECRYPT_cleanup(decrypt_state.dcrypt);
 	}
+#ifdef CONFIG_CHUNKED_HASH
+	if (args->chunked_hashes) {
+		if (chunked_hash_state.chunk_data)
+			munmap(chunked_hash_state.chunk_data, chunked_hash_state.chunk_size);
+	}
+#endif
 	if (input_state.dgst) {
 		swupdate_HASH_cleanup(input_state.dgst);
 	}
