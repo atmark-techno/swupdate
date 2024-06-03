@@ -87,6 +87,8 @@ struct swupdate_copy {
 	uint32_t *checksum;
 	/* sw-description sha256 checksum */
 	unsigned char *hash;
+	/* juxtaposed sha256 checksums */
+	unsigned char *chunked_hashes;
 	/* encryption */
 	bool encrypted;
 	const char *imgivt;
