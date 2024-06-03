@@ -60,6 +60,9 @@ void iterate_field(parsertype p, void *e, iterate_callback cb, void *data);
 void get_field(parsertype p, void *e, const char *path, void *dest, field_type_t type);
 int exist_field_string(parsertype p, void *e, const char *path);
 void get_hash_value(parsertype p, void *elem, unsigned char *hash);
+#ifdef CONFIG_CHUNKED_HASH
+int get_chunked_hashes(parsertype p, void *elem, unsigned char **chunked_hashes);
+#endif
 void check_field_string(const char *src, char *dst, const size_t max_len);
 void *find_root(parsertype p, void *root, const char **nodes);
 void *get_node(parsertype p, void *root, const char **nodes);
