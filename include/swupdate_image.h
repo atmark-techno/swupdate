@@ -75,6 +75,7 @@ struct img_type {
 	long long size;
 	unsigned int checksum;
 	unsigned char sha256[SHA256_HASH_LENGTH];	/* SHA-256 is 32 byte */
+	unsigned char *chunked_hashes;
 	LIST_ENTRY(img_type) next;
 };
 
