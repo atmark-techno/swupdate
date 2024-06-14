@@ -91,6 +91,41 @@ static channel_op_res_t channel_put_file(channel_t *this, void *data);
 channel_op_res_t channel_curl_init(void);
 channel_t *channel_new(void);
 
+static char *twin_reissue_url(void)
+{
+	const size_t url_size = sizeof(char) * 4096;
+	char *url;
+	const char *cmdline = "/usr/libexec/armadillo-twin/reissue_url";
+	FILE *fp;
+	int rc;
+
+	if (!getenv("SWUPDATE_ARMADILLO_TWIN"))
+		return NULL;
+
+	url = malloc(url_size);
+	if (!url)
+		return NULL;
+
+	if ((fp = popen(cmdline, "r")) == NULL)
+		goto cleanup_twin_reissue_url;
+
+	url[0] = 0;
+	if (fgets(url, url_size, fp) == NULL || url[0] == 0) {
+		pclose(fp);
+		goto cleanup_twin_reissue_url;
+	}
+
+	rc = pclose(fp);
+	if (rc < 0 || !WIFEXITED(rc) || WEXITSTATUS(rc))
+		goto cleanup_twin_reissue_url;
+
+	return url;
+
+cleanup_twin_reissue_url:
+	ERROR("Could not reissue twin agent URL");
+	free(url);
+	return NULL;
+}
 
 channel_op_res_t channel_curl_init(void)
 {
@@ -1436,6 +1471,20 @@ channel_op_res_t channel_get_file(channel_t *this, void *data)
 
 		curlrc = curl_easy_perform(channel_curl->handle);
 		result = channel_map_curl_error(curlrc);
+
+		char *new_url;
+		if ((curlrc == CURLE_RANGE_ERROR) && (new_url = twin_reissue_url())) {
+			if (curl_easy_setopt(channel_curl->handle, CURLOPT_URL, new_url) != CURLE_OK) {
+				ERROR("Could not update url to Armadillo Twin re-issued URL (%d): '%s'\n",
+				      curlrc, curl_easy_strerror(curlrc));
+				result = channel_map_curl_error(curlrc);
+				free(new_url);
+				goto cleanup_file;
+			}
+			result = CHANNEL_EAGAIN;
+			free(new_url);
+		}
+
 		if (result == CHANNEL_ENONET) {
 			WARN("Lost connection. Retrying after %d seconds.",
 					channel_data->retry_sleep);
