@@ -92,10 +92,11 @@ static void send_progress_msg(void)
 				n = send(conn->sockfd, buf, count, MSG_NOSIGNAL | MSG_DONTWAIT);
 				attempt++;
 				tryagain = n <= 0 && (errno == EWOULDBLOCK || errno == EAGAIN);
-				if (tryagain)
+				if (tryagain && attempt < maxAttempts)
 					sleep(1);
 			} while (tryagain && attempt < maxAttempts);
 			if (n <= 0) {
+				DEBUG("Removed progress socket %d after error: %m", conn->sockfd);
 				close(conn->sockfd);
 				SIMPLEQ_REMOVE(&pprog->conns, conn,
 					       	progress_conn, next);
